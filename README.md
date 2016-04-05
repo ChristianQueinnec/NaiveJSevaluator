@@ -1,2 +1,3 @@
 # NaiveJSevaluator
-Naive ECMAscript 2015 (ES6) evaluator
+
+Naive ECMAscript 2015 (ES6) evaluator.
