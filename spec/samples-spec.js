@@ -33,10 +33,20 @@ describe("Naive ECMAscript evaluator:", function () {
                             console.log("Expected: " + expected);
                             console.log("Out: " + out);
                         }
-                        var result, resultValue, exception, out;
+                        var result, resultValue, exception;
                         try {
                             result = evaluator.evaluate(content);
-                            resultValue = result.value.toString();
+                            if ( result.value ) {
+                                resultValue = result.value.toString();
+                            } else if ( result.value === false ) {
+                                resultValue = 'false';
+                            } else if ( result.value === undefined ) {
+                                resultValue = 'undefined';
+                            } else if ( result.value === null ) {
+                                resultValue = 'null';
+                            } else {
+                                resultValue = '???';
+                            }
                             out = result.out;
                         } catch (exc) {
                             exception = exc;

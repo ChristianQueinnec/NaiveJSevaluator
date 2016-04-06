@@ -2,7 +2,7 @@
 
 let parser = require('./parser.js');
 
-let verbose = 0;
+let verbose = 6;
 
 function evaluate (string) {
     let ast = parser.parse(string);
@@ -17,6 +17,8 @@ function evaluate (string) {
     };
     return result;
 }
+
+exports.evaluate = evaluate;
 
 // {{{ Preparation of the initial state of the interpreter
 
@@ -42,7 +44,7 @@ function mkInitial () {
 
 var _output = '';            // stream instead ??
 function mkInitialEnv () {
-    let r0 = new GlobalEnvironment(null);
+    let r0 = new GlobalEnvironment();
     r0.adjoinVarVariable('console', {
         log: function (arg) {
             let s = arg.toString();
@@ -82,6 +84,9 @@ class Environment {
     }
 }
 class GlobalEnvironment extends Environment {
+    constructor () {
+        super(null);
+    }
     adjoinVarVariable (variableName, value) {
         this.variables[variableName] = value;
     }
@@ -235,4 +240,33 @@ function processAssignmentExpression (ast, self, r, k, c) {
 }
 dispatcher.processAssignmentExpression = processAssignmentExpression;
 
-exports.evaluate = evaluate;
+function processVariableDeclaration (ast, self, r, k, c) {
+    function processDeclarations (asts) {
+        let n = asts.length;
+        if ( n === 0 ) {
+            return k(null);
+        } else {
+            function knext () {
+                return processDeclarations(asts.splice(1));
+            }
+            return process(asts[0], self, r, knext, c);
+        }
+    }
+    return processDeclarations(ast.declarations);
+}
+dispatcher.processVariableDeclaration = processVariableDeclaration;
+
+function processVariableDeclarator (ast, self, r, k, c) {
+    function kdeclare (value) {
+        r.adjoinVarVariable(ast.id.name, value);
+        return k(value);
+    }
+    if ( ast.init ) {
+        return process(ast.init, self, r, kdeclare, c);
+    } else {
+        return kdeclare(undefined);
+    }
+}
+dispatcher.processVariableDeclarator = processVariableDeclarator;
+
+// end of main.js
