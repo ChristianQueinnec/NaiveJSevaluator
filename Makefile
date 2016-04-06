@@ -9,14 +9,19 @@ convert.with.babel : ${BABEL}
 	-rm -rf dist
 	mkdir -p dist 
 	${BABEL} src/ --out-dir dist/
+
+tests : convert.with.babel 
+	node_modules/.bin/jasmine 
+
+# ######################################################## Obsolete
+
+# beautify does not pretty-print correctly `..${}..`
+XXbeautify.dist.files :
 	for f in dist/?*.js ; do \
 	   case "$$f" in \
 	      *-babel.js) continue ;; \
 	      *) ${JSPP} $$f > $${f%.js}-babel.js ; \
 		 mv -f $${f%.js}-babel.js $$f ;; esac ; done
-
-tests : convert.with.babel 
-	node_modules/.bin/jasmine 
 
 # ######################################################## Once
 at.beginning : 

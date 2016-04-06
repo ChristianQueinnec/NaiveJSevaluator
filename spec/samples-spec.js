@@ -8,6 +8,7 @@ var fs = require('fs');
 var evaluator = require('../dist/main.js');
 
 var samplesDir = './Samples';
+var verbose = 10;
 
 describe("Naive ECMAscript evaluator:", function () {
 
@@ -28,29 +29,42 @@ describe("Naive ECMAscript evaluator:", function () {
                 function process (err, content) {
                     expect(err).toBeNull();
                     readExpectations(file, function (expected, out) {
-                        console.log("Expected: " + expected); // DEBUG
-                        console.log("Out: " + out); // DEBUG
-                        try {
-                            var result = evaluator.evaluate(content);
-                            var resultValue = result.value.toString();
-                            console.log("Result is " + result); // DEBUG
-                            expect(result.out).toBe(out);
-                            if ( expected instanceof RegExp ) {
-                                expect(resultValue).toMatch(expected);
-                            } else {
-                                expect(resultValue).toBe(expected);
-                            }
-                            next();
-                        } catch (exc) {
-                            fail(exc);
+                        if ( verbose > 9 ) {
+                            console.log("Expected: " + expected);
+                            console.log("Out: " + out);
                         }
+                        var result, resultValue, exception, out;
+                        try {
+                            result = evaluator.evaluate(content);
+                            resultValue = result.value.toString();
+                            out = result.out;
+                        } catch (exc) {
+                            exception = exc;
+                            resultValue = exc.toString();
+                        }
+                        if ( verbose > 5 ) {
+                            if ( exception ) {
+                                console.log("Exception: " + exception + "\n");
+                            } else {
+                                console.log("Result: " + resultValue + "\n");
+                            }
+                        }
+                        expect(out || '').toBe(out);
+                        if ( expected instanceof RegExp ) {
+                            expect(resultValue).toMatch(expected);
+                        } else {
+                            expect(resultValue).toBe(expected);
+                        }
+                        next();
                     });
                 }
                 return process;
             }
             function next () {
                 if ( samples.length > 0 ) {
-                    console.log("Considering " + samples[0]); // DEBUG
+                    if ( verbose > 0 ) {
+                        console.log("Considering " + samples[0]);
+                    }
                     var sample = samplesDir + '/' + samples[0];
                     samples = samples.splice(1);
                     var process = makeProcess(sample);
@@ -71,8 +85,8 @@ describe("Naive ECMAscript evaluator:", function () {
                     }
                     file = file.replace(/[.]result$/, '.out');
                     fs.readFile(file, function (err, out) {
-                        expect(err).toBeNull();
-                        out = out.toString().trim();
+                        // The *.out file may be missing!
+                        out = (out || '').toString().trim();
                         // return pair expected, output
                         cb(expected, out);
                     });
@@ -83,3 +97,5 @@ describe("Naive ECMAscript evaluator:", function () {
     }, 50);
 
 });
+
+// end of samples-spec.js

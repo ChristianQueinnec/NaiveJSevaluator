@@ -1,0 +1,3 @@
+/* number literal
+*/
+42
