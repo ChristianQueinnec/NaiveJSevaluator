@@ -2,7 +2,7 @@
 
 let parser = require('./parser.js');
 
-let verbose = 6;
+let verbose = 446;
 
 function evaluate (string) {
     let ast = parser.parse(string);
@@ -51,7 +51,7 @@ function mkInitialEnv () {
             _output += s;
         }
     });
-    r0.adjoinVarVariable('global', r0);
+    r0.adjoinVarVariable('global', r0.variables);
     return r0;
 }
 
@@ -176,7 +176,8 @@ function processProgram (ast, self, r, k, c) {
 dispatcher.processProgram = processProgram;
 
 function processBlockStatement (ast, self, r, k, c) {
-    return processSequenceExpression(ast.body, self, r, k, c);
+    let rblock = new BlockEnvironment(r);
+    return processSequenceExpression(ast.body, self, rblock, k, c);
 }
 dispatcher.processProgram = 
     dispatcher.processBlockStatement = processProgram;
@@ -233,10 +234,13 @@ function processIdentifier (ast, self, r, k, c) {
 dispatcher.processIdentifier = processIdentifier;
 
 function processAssignmentExpression (ast, self, r, k, c) {
-    function kassign (value) {
-        return k(r.update(ast.left.name, value));
+    function knext (place) {
+        function kassign (value) {
+            return k(place(value));
+        }
+        return process(ast.right, self, r, kassign, c);
     }
-    return process(ast.right, self, r, kassign, c);
+    return computePlace(ast.left, self, r, knext, c);
 }
 dispatcher.processAssignmentExpression = processAssignmentExpression;
 
@@ -268,5 +272,46 @@ function processVariableDeclarator (ast, self, r, k, c) {
     }
 }
 dispatcher.processVariableDeclarator = processVariableDeclarator;
+
+function processMemberExpression (ast, self, r, k, c) {
+    function kmember (object) {
+        function kfetch (key) {
+            return k(object[key]);
+        }
+        if ( ast.computed ) {
+            return process(ast.property, self, r, kfetch, c);
+        } else {
+            return kfetch(ast.property.name);
+        }
+    }
+    return process(ast.object, self, r, kmember, c);
+}
+dispatcher.processMemberExpression = processMemberExpression;
+
+function computePlace (ast, self, r, k, c) {
+    if ( ast.type === 'Identifier' ) {
+        function write (value) {
+            return r.update(ast.name, value);
+        }
+        return k(write);
+    } else if ( ast.type === 'MemberExpression' ) {
+        function knext (object) {
+            function kwrite (key) {
+                function write (value) {
+                    return (object[key] = value);
+                }
+                return k(write);
+            }
+            if ( ast.computed ) {
+                return process(ast.property, self, r, kwrite, c);
+            } else {
+                return kwrite(ast.property.name);
+            }
+        }
+        return process(ast.object, self, r, knext, c);
+    } else {
+        throw new Error("Cannot computePlace " + ast);
+    }
+}
 
 // end of main.js

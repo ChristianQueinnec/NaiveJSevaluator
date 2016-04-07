@@ -104,7 +104,7 @@ describe("Naive ECMAscript evaluator:", function () {
             }
             next();
         });
-    }, 50);
+    }, 1000);
 
 });
 
