@@ -102,7 +102,7 @@ describe("Naive ECMAscript evaluator:", function () {
                         // The *.out file may be missing!
                         out = (out || '').toString().trim();
                         // return pair expected, output
-                        cb(expected, out);
+                        return cb(expected, out);
                     });
                 });
             }

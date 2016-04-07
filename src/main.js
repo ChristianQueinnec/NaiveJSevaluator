@@ -2,7 +2,7 @@
 
 let parser = require('./parser.js');
 
-let verbose = 6;
+let verbose = 446;
 
 function evaluate (string) {
     let ast = parser.parse(string);
@@ -264,33 +264,35 @@ function processAssignmentExpression (ast, self, r, k, c) {
 dispatcher.processAssignmentExpression = processAssignmentExpression;
 
 function processVariableDeclaration (ast, self, r, k, c) {
-    function processDeclarations (asts) {
+    function processDeclarations (kind, asts) {
+        function processVariableDeclarator (ast, self, r, k, c) {
+            function kdeclare (value) {
+                if ( kind === 'let' ) {
+                    r.adjoinLetVariable(ast.id.name, value);
+                } else {
+                    r.adjoinVarVariable(ast.id.name, value);
+                }
+                return k(value);
+            }
+            if ( ast.init ) {
+                return process(ast.init, self, r, kdeclare, c);
+            } else {
+                return kdeclare(undefined);
+            }
+        }
         let n = asts.length;
         if ( n === 0 ) {
             return k(null);
         } else {
             function knext () {
-                return processDeclarations(asts.splice(1));
+                return processDeclarations(kind, asts.splice(1));
             }
-            return process(asts[0], self, r, knext, c);
+            return processVariableDeclarator(asts[0], self, r, knext, c);
         }
     }
-    return processDeclarations(ast.declarations);
+    return processDeclarations(ast.kind, ast.declarations);
 }
 dispatcher.processVariableDeclaration = processVariableDeclaration;
-
-function processVariableDeclarator (ast, self, r, k, c) {
-    function kdeclare (value) {
-        r.adjoinVarVariable(ast.id.name, value);
-        return k(value);
-    }
-    if ( ast.init ) {
-        return process(ast.init, self, r, kdeclare, c);
-    } else {
-        return kdeclare(undefined);
-    }
-}
-dispatcher.processVariableDeclarator = processVariableDeclarator;
 
 function processMemberExpression (ast, self, r, k, c) {
     function kmember (object) {
@@ -404,6 +406,28 @@ function processIfStatement (ast, self, r, k, c) {
     return process(ast.test, self, r, kchoice, c);
 }
 dispatcher.processIfStatement = processIfStatement;
+
+function processWhileStatement (ast, self, r, k, c) {
+    function kwhile (ignore) {
+        return process(ast.test, self, r, kbody, c);
+    }
+    function kbody (value) {
+        if ( value ) {
+            return process(ast.body, self, r, kwhile, c);
+        } else {
+            return k(null);
+        }
+    }
+    return process(ast.test, self, r, kbody, c);
+}
+dispatcher.processWhileStatement = processWhileStatement;
+
+function processUpdateExpression (ast, self, r, k, c) {
+    let variableName = ast.argument.name;
+    let variableValue = r.lookup(variableName);
+    return k(r.update(variableName, variableValue+1));
+}
+dispatcher.processUpdateExpression = processUpdateExpression;
 
 // }}}
 // end of main.js
