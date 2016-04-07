@@ -28,12 +28,12 @@ describe("Naive ECMAscript evaluator:", function () {
             function makeProcess(file) {
                 function process (err, content) {
                     expect(err).toBeNull();
-                    readExpectations(file, function (expected, out) {
+                    readExpectations(file, function (expected, output) {
                         if ( verbose > 9 ) {
-                            console.log("Expected: " + expected);
-                            console.log("Out: " + out);
+                            console.log("Expected value:  " + expected);
+                            console.log("Expected output: " + output);
                         }
-                        var result, resultValue, exception;
+                        var result, resultValue, exception, out;
                         try {
                             result = evaluator.evaluate(content);
                             if ( result.value ) {
@@ -45,9 +45,10 @@ describe("Naive ECMAscript evaluator:", function () {
                             } else if ( result.value === null ) {
                                 resultValue = 'null';
                             } else {
+                                // NaN case ???
                                 resultValue = '???';
                             }
-                            out = result.out;
+                            out = result.output;
                         } catch (exc) {
                             exception = exc;
                             resultValue = exc.toString();
@@ -58,8 +59,11 @@ describe("Naive ECMAscript evaluator:", function () {
                             } else {
                                 console.log("Result: " + resultValue + "\n");
                             }
+                            if ( out && out.length > 0 ) {
+                                console.log("Output: " + out);
+                            }
                         }
-                        expect(out || '').toBe(out);
+                        expect(out || '').toBe(output);
                         if ( expected instanceof RegExp ) {
                             expect(resultValue).toMatch(expected);
                         } else {

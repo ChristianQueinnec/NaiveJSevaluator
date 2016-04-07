@@ -2,7 +2,7 @@
 
 let parser = require('./parser.js');
 
-let verbose = 446;
+let verbose = 6;
 
 function evaluate (string) {
     let ast = parser.parse(string);
@@ -13,8 +13,8 @@ function evaluate (string) {
     let initial = mkInitial();
     var result = {
         value: process(ast, initial.r, initial.r, initial.k, initial.c),
-        out: _output
     };
+    result.output = _output;
     return result;
 }
 
@@ -46,9 +46,12 @@ var _output = '';            // stream instead ??
 function mkInitialEnv () {
     let r0 = new GlobalEnvironment();
     r0.adjoinVarVariable('console', {
-        log: function (arg) {
-            let s = arg.toString();
-            _output += s;
+        log: function (args, self, k, c) {
+            for ( let arg of args ) {
+                let s = arg.toString();
+                _output += s;
+            }
+            return k(null);
         }
     });
     r0.adjoinVarVariable('global', r0.variables);
@@ -197,6 +200,22 @@ function processSequenceExpression (asts, self, r, k, c) {
 }
 dispatcher.processSequenceExpression = processSequenceExpression;
 
+function processExpressions (asts, self, r, k, c) {
+    let n = asts.length;
+    if ( n === 0 ) {
+        return k([]);
+    } else {
+        function knext (arg) {
+            function kgather (args) {
+                args.unshift(arg);
+                return k(args);
+            }
+            return processExpressions(asts.splice(1), self, r, kgather, c);
+        }
+        return process(asts[0], self, r, knext, c);
+    }
+}
+
 function processExpressionStatement (ast, self, r, k, c) {
     return process(ast.expression, self, r, k, c);
 }
@@ -313,6 +332,78 @@ function computePlace (ast, self, r, k, c) {
         throw new Error("Cannot computePlace " + ast);
     }
 }
+
+function processFunctionDeclaration (ast, self, r, k, c) {
+    function f (args, self, k, c) {
+        let newr = new FunctionCallEnvironment(r);
+        newr.adjoinLetVariable(ast.id.name, f);
+        let n = args.length
+        for ( let i=0 ; i<ast.params.length ; i++ ) {
+            let varName = ast.params[i].name;
+            let value = undefined;
+            if ( i < n ) {
+                value = args[i];
+            }
+            newr.adjoinVarVariable(varName, value);
+        }
+        console.log(newr);//DEBUG
+        return process(ast.body, undefined, newr, k, c);
+    }
+    r.adjoinVarVariable(ast.id.name, f);
+    return k(f);
+}
+dispatcher.processFunctionDeclaration = processFunctionDeclaration;
+
+function processFunctionExpression (ast, self, r, k, c) {
+    function f (args, self, k, c) {
+        let newr = new FunctionCallEnvironment(r);
+        let n = args.length
+        for ( let i=0 ; i<ast.params.length ; i++ ) {
+            let varName = ast.params[i].name;
+            let value = undefined;
+            if ( i < n ) {
+                value = args[i];
+            }
+            newr.adjoinVarVariable(varName, value);
+        }
+        return process(ast.body, undefined, newr, k, c);
+    }
+    return k(f);
+}
+dispatcher.processFunctionExpression = processFunctionExpression;
+
+function processReturnStatement (ast, self, r, k, c) {
+    return process(ast.argument, self, r, k, c);
+}
+dispatcher.processReturnStatement = processReturnStatement;
+
+function processCallExpression (ast, self, r, k, c) {
+    function karguments (f) {
+        let n = ast.arguments.length;
+        if ( n === 0 ) {
+            return f([], undefined, k, c);
+        } else {
+            function kapply (args) {
+                return f(args, undefined, k, c);
+            }
+            return processExpressions(ast.arguments, self, r, kapply, c);
+        }
+    }
+    return process(ast.callee, self, r, karguments, c);
+}
+dispatcher.processCallExpression = processCallExpression;
+
+function processIfStatement (ast, self, r, k, c) {
+    function kchoice (value) {
+        if ( value ) {
+            return process(ast.consequent, self, r, k, c);
+        } else {
+            return process(ast.alternate, self, r, k, c);
+        }
+    }
+    return process(ast.test, self, r, kchoice, c);
+}
+dispatcher.processIfStatement = processIfStatement;
 
 // }}}
 // end of main.js
