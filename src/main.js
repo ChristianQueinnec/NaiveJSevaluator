@@ -314,4 +314,5 @@ function computePlace (ast, self, r, k, c) {
     }
 }
 
+// }}}
 // end of main.js
