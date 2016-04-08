@@ -9,12 +9,12 @@ function evaluate (string) {
     if ( verbose > 5 ) {
         console.log(JSON.stringify(ast));
     }
-    _output = '';
-    let initial = mkInitial();
+    let stdout = new StdOut();
+    let initial = mkInitial(stdout);
     var result = {
         value: process(ast, initial.r, initial.r, initial.k, initial.c),
     };
-    result.output = _output;
+    result.output = stdout.toString();
     return result;
 }
 
@@ -22,11 +22,11 @@ exports.evaluate = evaluate;
 
 // {{{ Preparation of the initial state of the interpreter
 
-function mkInitial () {
+function mkInitial (stdout) {
     function k0 (value) {
         return value;
     }
-    var r0 = mkInitialEnv();
+    var r0 = mkInitialEnv(stdout);
     var c0 = {
         catcher: function (exc) {
             console.log("Uncaught exception " + exc);
@@ -42,20 +42,33 @@ function mkInitial () {
     };
 }
 
-var _output = '';            // stream instead ??
-function mkInitialEnv () {
+function mkInitialEnv (stdout) {
     let r0 = new GlobalEnvironment();
     r0.adjoinVarVariable('console', {
         log: function (args, self, k, c) {
             for ( let arg of args ) {
-                let s = arg.toString();
-                _output += s;
+                stdout.append(arg.toString());
             }
             return k(null);
         }
     });
     r0.adjoinVarVariable('global', r0.variables);
     return r0;
+}
+
+// }}}
+// {{{ stdout
+
+class StdOut {
+    constructor () {
+        this.output = '';
+    }
+    toString () {
+        return this.output;
+    }
+    append (s) {
+        this.output += s;
+    }
 }
 
 //     {{{ Environment
