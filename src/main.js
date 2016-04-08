@@ -133,31 +133,33 @@ class BlockEnvironment extends Environment {
 // NOTA: they are implemented lazily with the usual Javascript operators
 // therefore they take care of coercions and other weird cases.
 
-let _unaryOperator = {};
-function getUnaryOperator (unaryOperatorName) {
-    var f = _unaryOperator[unaryOperatorName];
-    if ( f ) {
+let getUnaryOperator = (function (_unaryOperator) {
+    return function (unaryOperatorName) {
+        var f = _unaryOperator[unaryOperatorName];
+        if ( f ) {
+            return f;
+        }
+        // Create unary operators on the fly:
+        f = new Function("argument", 
+                         `return ${unaryOperatorName} argument;`);
+        _unaryOperator[unaryOperatorName] = f;
         return f;
     }
-    // Create unary operators on the fly:
-    f = new Function("argument", 
-                     `return ${unaryOperatorName} argument;`);
-    _unaryOperator[unaryOperatorName] = f;
-    return f;
-}
+})({});
 
-let _binaryOperator = {};
-function getBinaryOperator (binaryOperatorName) {
-    var f = _binaryOperator[binaryOperatorName];
-    if ( f ) {
+let getBinaryOperator = (function (_binaryOperator) {
+    return function (binaryOperatorName) {
+        var f = _binaryOperator[binaryOperatorName];
+        if ( f ) {
+            return f;
+        }
+        // Create binary operators on the fly:
+        f = new Function("left, right", 
+                         `return left ${binaryOperatorName} right;`);
+        _binaryOperator[binaryOperatorName] = f;
         return f;
     }
-    // Create binary operators on the fly:
-    f = new Function("left, right", 
-                     `return left ${binaryOperatorName} right;`);
-    _binaryOperator[binaryOperatorName] = f;
-    return f;
-}
+})({});
 
 // }}}
 // {{{ Evaluation methods
